@@ -1,0 +1,32 @@
+SAMPLE INDIAN LEGAL NOTES (For RAG Testing)
+
+1) Indian Contract Act, 1872 (Basics)
+- Section 10: All agreements are contracts if made by free consent of parties competent to contract, for lawful consideration and lawful object, and are not expressly declared void.
+- Section 11: A person is competent to contract if he is of the age of majority, of sound mind, and not disqualified by any law.
+- Section 73: Compensation for loss or damage caused by breach of contract.
+
+Example:
+If A agrees to sell a laptop to B for ₹30,000 and later refuses without valid reason, B may claim damages under Section 73.
+
+2) Consumer Protection Act, 2019 (Basics)
+- Consumer can file complaint for defective goods, deficiency in services, unfair trade practices.
+- District Commission: up to ₹50 lakh (value of goods/services paid as consideration).
+- Mediation may be used in suitable cases.
+
+Example:
+If a mobile phone is defective and the seller refuses replacement, consumer may file complaint.
+
+3) Indian Penal Code, 1860 (IPC) (Basics)
+- Section 420: Cheating and dishonestly inducing delivery of property.
+- Section 406: Criminal breach of trust.
+
+Example:
+If someone takes money promising a job and disappears, it may amount to cheating (Section 420).
+
+4) Rent / Tenant (General Indian Context)
+- Many states have Rent Control laws.
+- Eviction usually requires valid grounds such as non-payment of rent, personal necessity, or violation of agreement.
+- Proper notice is typically required.
+
+DISCLAIMER:
+This document is only for testing the RAG project. It is not legal advice.

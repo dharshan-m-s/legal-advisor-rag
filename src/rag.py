@@ -44,7 +44,7 @@ Disclaimer: This is general legal information, not legal advice.
 """
 
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="models/gemini-2.5-flash",
         contents=prompt
     )
     return response.text
