@@ -1,0 +1,7 @@
+google-genai
+gradio
+faiss-cpu
+pypdf
+python-docx
+python-dotenv
+numpy
