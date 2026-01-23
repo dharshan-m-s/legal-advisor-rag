@@ -2,75 +2,121 @@ import os
 import shutil
 import numpy as np
 import faiss
-import gradio as gr
+import streamlit as st
 
-from src.config import UPLOAD_DIR
 from src.extractor import extract_text
 from src.chunker import chunk_text
 from src.embeddings import embed_text
 from src.storage import save_store, load_store
 from src.rag import retrieve, generate_answer
 
+UPLOAD_DIR = "data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-STATE = {
-    "index": None,
-    "chunks": []
-}
+st.set_page_config(page_title="Indian Legal Advisor (RAG)", layout="wide")
 
-# Load saved store if available
-STATE["index"], STATE["chunks"] = load_store()
+# Load store once
+if "index" not in st.session_state:
+    st.session_state.index, st.session_state.chunks = load_store()
 
-def process_files(files):
-    all_chunks = []
+if "chat" not in st.session_state:
+    st.session_state.chat = []
 
-    for f in files:
-        # Save file locally
-        file_path = os.path.join(UPLOAD_DIR, os.path.basename(f.name))
-        shutil.copy(f.name, file_path)
+st.title("🇮🇳 Indian Legal Advisor (RAG)")
+st.caption("Local RAG using FAISS + Embeddings + LLM")
 
-        text = extract_text(file_path)
-        all_chunks.extend(chunk_text(text))
+# Sidebar controls
+st.sidebar.header("⚙️ Controls")
+language = st.sidebar.selectbox("Language", ["English", "Hindi", "Tamil"], index=0)
 
-    if not all_chunks:
-        return "❌ No text found in uploaded files."
+if st.sidebar.button("🧹 Reset Vectorstore"):
+    # Delete vectorstore files
+    try:
+        if os.path.exists("vectorstore/faiss.index"):
+            os.remove("vectorstore/faiss.index")
+        if os.path.exists("vectorstore/chunks.json"):
+            os.remove("vectorstore/chunks.json")
+    except:
+        pass
 
-    dim = len(embed_text(all_chunks[0]))
-    index = faiss.IndexFlatL2(dim)
+    st.session_state.index = None
+    st.session_state.chunks = []
+    st.session_state.chat = []
+    st.sidebar.success("Vectorstore reset done.")
 
-    vectors = np.array([embed_text(c) for c in all_chunks])
-    index.add(vectors)
+st.divider()
 
-    STATE["index"] = index
-    STATE["chunks"] = all_chunks
+# Upload section
+st.subheader("📂 Upload Documents")
+uploaded_files = st.file_uploader(
+    "Upload PDF / DOCX / TXT files",
+    type=["pdf", "docx", "txt"],
+    accept_multiple_files=True
+)
 
-    save_store(index, all_chunks)
+col1, col2 = st.columns([1, 1])
 
-    return f"✅ Stored {len(all_chunks)} chunks and saved vectorstore."
+with col1:
+    if st.button("⚡ Process Documents"):
+        if not uploaded_files:
+            st.warning("Please upload at least one file.")
+        else:
+            all_chunks = []
 
-def legal_chat(query, language):
-    if STATE["index"] is None or not STATE["chunks"]:
-        return "❌ Upload and process documents first."
+            for uf in uploaded_files:
+                save_path = os.path.join(UPLOAD_DIR, uf.name)
 
-    retrieved = retrieve(query, STATE["index"], STATE["chunks"], k=3)
-    return generate_answer(query, language, retrieved)
+                with open(save_path, "wb") as f:
+                    f.write(uf.getbuffer())
 
-with gr.Blocks(theme=gr.themes.Soft()) as app:
-    gr.Markdown("## 🇮🇳 Indian Legal Advisor (Local RAG)")
-    gr.Markdown("Gemini 1.5 • FAISS • Multilingual")
+                text = extract_text(save_path)
 
-    language = gr.Dropdown(["English", "Hindi", "Tamil"], value="English", label="🌐 Language")
+                # Skip scanned/empty PDFs
+                if not text.strip():
+                    continue
 
-    with gr.Tab("📂 Upload & Process"):
-        files = gr.File(file_types=[".pdf", ".docx", ".txt"], file_count="multiple")
-        btn = gr.Button("Process Documents")
-        status = gr.Textbox(label="Status")
-        btn.click(process_files, files, status)
+                all_chunks.extend(chunk_text(text))
 
-    with gr.Tab("💬 Legal Chat"):
-        query = gr.Textbox(label="Ask your legal question")
-        out = gr.Textbox(lines=10, label="Answer")
-        ask = gr.Button("Ask")
-        ask.click(legal_chat, [query, language], out)
+            if not all_chunks:
+                st.error("No extractable text found. (Scanned PDF maybe?)")
+            else:
+                dim = len(embed_text(all_chunks[0]))
+                index = faiss.IndexFlatL2(dim)
 
-app.launch()
+                vectors = np.array([embed_text(c) for c in all_chunks])
+                index.add(vectors)
+
+                st.session_state.index = index
+                st.session_state.chunks = all_chunks
+
+                save_store(index, all_chunks)
+                st.success(f"Stored {len(all_chunks)} chunks successfully!")
+
+with col2:
+    st.info(f"Chunks loaded: {len(st.session_state.chunks)}")
+
+st.divider()
+
+# Chat section
+st.subheader("💬 Ask Legal Questions")
+
+query = st.text_input("Enter your question")
+
+if st.button("Ask"):
+    if st.session_state.index is None or not st.session_state.chunks:
+        st.error("Upload and process documents first.")
+    elif not query.strip():
+        st.warning("Enter a question.")
+    else:
+        retrieved = retrieve(query, st.session_state.index, st.session_state.chunks, k=3)
+        answer = generate_answer(query, language, retrieved)
+
+        st.session_state.chat.append(("You", query))
+        st.session_state.chat.append(("Assistant", answer))
+
+# Display chat history
+for role, msg in st.session_state.chat:
+    if role == "You":
+        st.markdown(f"**🧑 You:** {msg}")
+    else:
+        st.markdown(f"**🤖 Assistant:**\n\n{msg}")
