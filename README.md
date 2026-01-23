@@ -1,3 +1,3 @@
 To run the app exec
 
-streamlit run app.py
+streamlit run streamlit_app.py
